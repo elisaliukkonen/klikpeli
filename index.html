@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jäätelö Clicker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f8ff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff69b4;
+            margin-bottom: 30px;
+        }
+
+        .stats {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .count {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ff69b4;
+            margin: 10px 0;
+        }
+
+        .clicker {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        #ice-cream-btn {
+            font-size: 4em;
+            padding: 20px;
+            border: 3px solid #ff69b4;
+            border-radius: 20px;
+            background: #ffe4e1;
+            cursor: pointer;
+        }
+
+        #ice-cream-btn:hover {
+            background: #ffc0cb;
+        }
+
+        .shop {
+            margin-top: 40px;
+        }
+
+        .shop h2 {
+            color: #4169e1;
+            margin-bottom: 20px;
+        }
+
+        .upgrade {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .upgrade:hover {
+            background: #e6f2ff;
+        }
+
+        .upgrade.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .upgrade-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .upgrade-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .upgrade-cost {
+            color: #ff69b4;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 600px) {
+            #ice-cream-btn {
+                font-size: 3em;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h1>🍦 Jäätelö Clicker</h1>
+        
+        <div class="stats">
+            <div>Jäätelöitä: <span class="count" id="count">0</span></div>
+            <div>Per sekunti: <span id="per-sec">0</span></div>
+        </div>
+
+        <div class="clicker">
+            <button id="ice-cream-btn">🍦</button>
+        </div>
+
+        <div class="shop">
+            <h2>Kauppa</h2>
+            <div id="upgrades"></div>
+        </div>
+    </div>
+
+    <script>
+        let iceCreams = 0;
+        let clickPower = 1;
+        let perSecond = 0;
+
+        let upgrades = [
+            { name: "Automaatti", cost: 15, owned: 0, production: 1 },
+            { name: "Parempi lusikka", cost: 100, owned: 0, clickBonus: 1 },
+            { name: "Kone", cost: 500, owned: 0, production: 5 },
+            { name: "Tehdas", cost: 2000, owned: 0, production: 20 }
+        ];
+
+        const countEl = document.getElementById('count');
+        const perSecEl = document.getElementById('per-sec');
+        const btnEl = document.getElementById('ice-cream-btn');
+        const upgradesEl = document.getElementById('upgrades');
+
+        function updateDisplay() {
+            countEl.textContent = Math.floor(iceCreams);
+            perSecEl.textContent = perSecond.toFixed(1);
+            
+            upgrades.forEach((upgrade, i) => {
+                const upgradeEl = document.querySelector(`[data-id="${i}"]`);
+                if (upgradeEl) {
+                    const canAfford = iceCreams >= upgrade.cost;
+                    upgradeEl.classList.toggle('disabled', !canAfford);
+                    upgradeEl.querySelector('.cost').textContent = upgrade.cost;
+                    upgradeEl.querySelector('.owned').textContent = upgrade.owned;
+                }
+            });
+        }
+
+        function createUpgrades() {
+            upgradesEl.innerHTML = '';
+            upgrades.forEach((upgrade, i) => {
+                const div = document.createElement('div');
+                div.className = 'upgrade';
+                div.dataset.id = i;
+                
+                let description = '';
+                if (upgrade.production) {
+                    description = `+${upgrade.production} per sekunti`;
+                } else if (upgrade.clickBonus) {
+                    description = `+${upgrade.clickBonus} per klikkaus`;
+                }
+                
+                div.innerHTML = `
+                    <div class="upgrade-name">${upgrade.name}</div>
+                    <div class="upgrade-info">${description} (omistuksessa: <span class="owned">${upgrade.owned}</span>)</div>
+                    <div class="upgrade-cost">Hinta: <span class="cost">${upgrade.cost}</span></div>
+                `;
+                
+                div.onclick = () => buyUpgrade(i);
+                upgradesEl.appendChild(div);
+            });
+        }
+
+        function buyUpgrade(index) {
+            const upgrade = upgrades[index];
+            if (iceCreams >= upgrade.cost) {
+                iceCreams -= upgrade.cost;
+                upgrade.owned++;
+                upgrade.cost = Math.floor(upgrade.cost * 1.15);
+                
+                calculateProduction();
+                updateDisplay();
+                saveGame();
+            }
+        }
+
+        function calculateProduction() {
+            perSecond = 0;
+            clickPower = 1;
+            
+            upgrades.forEach(upgrade => {
+                if (upgrade.production) {
+                    perSecond += upgrade.owned * upgrade.production;
+                }
+                if (upgrade.clickBonus) {
+                    clickPower += upgrade.owned * upgrade.clickBonus;
+                }
+            });
+        }
+
+        function saveGame() {
+            localStorage.setItem('iceCreamSave', JSON.stringify({
+                iceCreams, clickPower, perSecond, upgrades
+            }));
+        }
+
+        function loadGame() {
+            const save = localStorage.getItem('iceCreamSave');
+            if (save) {
+                const data = JSON.parse(save);
+                iceCreams = data.iceCreams || 0;
+                upgrades = data.upgrades || upgrades;
+                calculateProduction();
+            }
+        }
+
+        btnEl.onclick = () => {
+            iceCreams += clickPower;
+            updateDisplay();
+            saveGame();
+        };
+
+        setInterval(() => {
+            if (perSecond > 0) {
+                iceCreams += perSecond;
+                updateDisplay();
+                saveGame();
+            }
+        }, 1000);
+
+        loadGame();
+        createUpgrades();
+        updateDisplay();
+    </script>
+</body>
+</html>
