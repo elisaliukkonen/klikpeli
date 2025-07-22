@@ -1,4 +1,4 @@
-# Jäätelö clicker
+# Jäätelön klikkaus
 
 Klikkaa jäätelöä ja hanki lisää jäätelöitä.
 
